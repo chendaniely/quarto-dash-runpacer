@@ -40,8 +40,8 @@ REFERENCE_DIST = "1km"
 # {.sidebar}
 
 ```{python}
-ui.input_text("REFERENCE_TIME_SHINY", "Reference Time:", placeholder="hh:mm:ss")
-ui.input_text("REFERENCE_DIST_SHINY", "Reference Distance:", placeholder="1km")
+ui.input_text("REFERENCE_TIME_SHINY", "Time (hh:mm:ss or mm:ss):", placeholder="00:06:00")
+ui.input_text("REFERENCE_DIST_SHINY", "Distance:", placeholder="1km")
 ```
 
 # Paces
