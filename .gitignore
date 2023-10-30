@@ -1,6 +1,9 @@
 **_files
 **.html
 
+run_pacer-app.py
+run_pacer.ipynb
+
 # PYTHON GIT IGNORE
 
 # Byte-compiled / optimized / DLL files
