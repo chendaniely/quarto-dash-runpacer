@@ -1,0 +1,96 @@
+---
+title: "Pace Calculator"
+format: dashboard
+---
+
+```{python}
+import numpy as np
+import pandas as pd
+from shiny import render, reactive, ui
+
+import display
+import conversions
+import parse
+import convert
+import generate
+
+pace_times_vec = np.vectorize(convert.pace_times)
+
+REFERENCE_DISTANCES = [
+    "400m",
+    "1km",
+    "1mi",
+    "5km",
+    "8km",
+    "10km",
+    "10mi",
+    "half",
+    "marathon",
+    "50km",
+    "50mi",
+    "100km",
+    "100mi",
+]
+
+REFERENCE_TIME = "6:00"
+REFERENCE_DIST = "1km"
+```
+
+
+```{python}
+# Define the styling function
+def highlight_row(x, color='yellow', reference_time=REFERENCE_TIME):
+    reference_time_display = display.display_seconds(convert.input_time_seconds(reference_time, verbose=False))
+    # Define an empty Series with the same index as the DataFrame
+    color = f'background-color: {color}'
+    df_color = pd.Series('', index=x.index)
+
+    df_color.loc[x.index == reference_time_display] = color
+
+    return df_color
+```
+
+```{python}
+df_reference = pd.DataFrame(index=REFERENCE_DISTANCES)
+
+df_reference = (
+  df_reference
+  .assign(Time=lambda df_: pace_times_vec(REFERENCE_TIME, REFERENCE_DIST, df_.index))
+)
+```
+
+# {.sidebar}
+
+```{python}
+ui.input_text("REFERENCE_TIME_SHINY", "Reference Time:", placeholder="hh:mm:ss")
+ui.input_text("REFERENCE_DIST_SHINY", "Reference Distance:", placeholder="1km")
+```
+
+```{python}
+```
+
+# Paces
+
+## Row {height='167px'}
+
+```{python}
+#| title: Reference Time + Distance
+df_reference.T
+```
+
+## Row
+
+```{python}
+#| title: +/- 30 Seconds Reference
+df_range = pd.DataFrame(
+  index=map(display.display_seconds, generate.generate_reference_range(REFERENCE_TIME)),
+  columns=REFERENCE_DISTANCES
+)
+
+df_range = df_range.apply(
+  lambda col_: pace_times_vec(col_.index, REFERENCE_DIST, col_.name)
+)
+
+styled_df = df_range.style.apply(highlight_row, axis='rows')
+styled_df
+```
