@@ -1,15 +1,12 @@
-python -m venv venv
-source activate venv/bin/activate
+# Running paces and total times
 
-pip install --upgrade pip wheel
+## Setup
 
-pip uninstall -y shiny htmltools
-pip install shiny==0.6.0 htmltools==0.4.1
+Take a look at the `setup` target from the `Makefile`
 
-pip install jupyter pandas pytest seaborn
+## Running + Deploying
 
+Running: `make preview` or `make shiny`
 
-quarto render run_pacer.qmd
-shiny run run_pacer-app.py
-
-quarto preview run_pacer.qmd
+Deploying: `make deploy_setup` will assume Posit Connect.
+  `make deploy` will assume you already have a `$CONNECT_API_KEY` environment variable.
