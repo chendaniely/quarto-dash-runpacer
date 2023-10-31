@@ -1,5 +1,6 @@
 ---
 title: "Pace Calculator"
+author: "Amateur Runner"
 format: dashboard
 server: shiny
 ---
@@ -32,34 +33,127 @@ REFERENCE_DISTANCES = [
     "100km",
     "100mi",
 ]
-
-REFERENCE_TIME = "6:00"
-REFERENCE_DIST = "1km"
 ```
 
 # {.sidebar}
 
+Reference Times and Distances.
+
+<!--
+Put a time and distance below and we'll calculate the time for each of the distances.
+The "1km" and "1mi" columns are usually what people refer to as a "pace".
+-->
+
 ```{python}
-ui.input_text("REFERENCE_TIME_SHINY", "Time (hh:mm:ss or mm:ss):", placeholder="00:06:00")
-ui.input_text("REFERENCE_DIST_SHINY", "Distance:", placeholder="1km")
+ui.input_text(id="SHY_REFERENCE_TIME", label="Time (hh:mm:ss or mm:ss):", value="6:00", placeholder="00:06:00")
+ui.input_text(id="SHY_REFERENCE_DIST", label="Distance:", value="1km", placeholder="1km")
+ui.input_slider(id="SHY_TIME_RANGE", label="Time Range (Seconds):", min=-300, max=300, value=[-30, 30], step=1)
+ui.input_text(id="SHY_RANGE_BY", label="By (Seconds):", value="1", placeholder="1")
+
+ui.output_text_verbatim("SHY_REFERENCE_TIME")
+ui.output_text_verbatim("SHY_REFERENCE_DIST")
 ```
 
-# Paces
+# Paces (interactive)
 
 ## Row {height='167px'}
 
 ```{python}
+@reactive.Calc
+def shy_df_reference():
+    data = (
+        pd.DataFrame(index=REFERENCE_DISTANCES)
+        .assign(Time=lambda df_: pace_times_vec(input.SHY_REFERENCE_TIME(), input.SHY_REFERENCE_DIST(), df_.index))
+    )
+    return data.T.reset_index(names='Distances')
+```
+
+```{python}
 #| title: Reference Time + Distance
 
-df_reference = pd.DataFrame(index=REFERENCE_DISTANCES)
+@render.data_frame
+def view_single_pace():
+    return render.DataTable(shy_df_reference())
+```
 
+## Row {height=100%}
+
+```{python}
+#| title: +/- Reference
+def highlight_row(x, reference_time, color='yellow'):
+    reference_time_display = display.display_seconds(convert.input_time_seconds(reference_time, verbose=False))
+    # Define an empty Series with the same index as the DataFrame
+    color = f'background-color: {color}'
+    df_color = pd.Series('', index=x.index)
+
+    df_color.loc[x.index == reference_time_display] = color
+
+    return df_color
+
+@reactive.Calc
+def shy_df_range():
+    data = pd.DataFrame(
+      index=map(
+        display.display_seconds,
+        generate.generate_reference_range(
+          input_time=input.SHY_REFERENCE_TIME(),
+          range_faster=int(input.SHY_TIME_RANGE()[0]),
+          range_slower=int(input.SHY_TIME_RANGE()[1]),
+          by=int(input.SHY_RANGE_BY())
+        )
+      ),
+      columns=REFERENCE_DISTANCES
+    )
+
+    data = data.apply(
+      lambda col_: pace_times_vec(col_.index, input.SHY_REFERENCE_DIST(), col_.name)
+    )
+
+    return data
+
+@render.data_frame
+def view_range_table():
+    #styled_df = shy_df_range().style.apply(highlight_row, reference_time = input.SHY_REFERENCE_TIME(), axis='rows')
+
+    return render.DataTable(shy_df_range(), height='100%')
+```
+
+
+# Paces (static)
+
+## Row {height='167px'}
+
+```{python}
+REFERENCE_TIME = "6:00"
+REFERENCE_DIST = "1km"
+```
+
+```{python}
+# Define the styling function
+def highlight_row(x, color='yellow', reference_time=REFERENCE_TIME):
+    reference_time_display = display.display_seconds(convert.input_time_seconds(reference_time, verbose=False))
+    # Define an empty Series with the same index as the DataFrame
+    color = f'background-color: {color}'
+    df_color = pd.Series('', index=x.index)
+
+    df_color.loc[x.index == reference_time_display] = color
+
+    return df_color
+```
+
+```{python}
 df_reference = (
-  df_reference
+  pd.DataFrame(index=REFERENCE_DISTANCES)
   .assign(Time=lambda df_: pace_times_vec(REFERENCE_TIME, REFERENCE_DIST, df_.index))
 )
-
-df_reference.T
 ```
+
+
+```{python}
+#| title: Reference Time + Distance
+df_reference.T.reset_index(names='Distance')
+```
+
 
 ## Row
 
@@ -88,5 +182,5 @@ df_range = df_range.apply(
 )
 
 styled_df = df_range.style.apply(highlight_row, axis='rows')
-styled_df
+styled_df # <class 'pandas.io.formats.style.Styler'> object type()
 ```
