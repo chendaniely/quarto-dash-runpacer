@@ -6,6 +6,8 @@ server: shiny
 ---
 
 ```{python}
+import asyncio
+
 import numpy as np
 import pandas as pd
 from shiny import render, reactive, ui
@@ -37,7 +39,7 @@ REFERENCE_DISTANCES = [
 
 # {.sidebar}
 
-Reference Times and Distances.
+Reference Times and Distances for interactive tables.
 
 <!--
 Put a time and distance below and we'll calculate the time for each of the distances.
@@ -52,6 +54,8 @@ ui.input_text(id="SHY_RANGE_BY", label="By (Seconds):", value="1", placeholder="
 
 ui.output_text_verbatim("SHY_REFERENCE_TIME")
 ui.output_text_verbatim("SHY_REFERENCE_DIST")
+
+#ui.download_button(id="download_df_range", label="Download Pace Table")
 ```
 
 # Paces (interactive)
@@ -116,8 +120,15 @@ def view_range_table():
     #styled_df = shy_df_range().style.apply(highlight_row, reference_time = input.SHY_REFERENCE_TIME(), axis='rows')
 
     return render.DataTable(shy_df_range(), height='100%')
-```
 
+# @session.download(
+#   self,
+#         filename=lambda: f"paces.csv"
+#     )
+# async def download_df_range():
+#     await asyncio.sleep(0.25)
+#     yield shy_df_range().to_csv()
+```
 
 # Paces (static)
 
