@@ -3,13 +3,19 @@ title: "Pace Calculator"
 author: "Amateur Runner"
 format: dashboard
 server: shiny
+jupyter: python3
 ---
 
 ```{python}
 import asyncio
+import math
 
 import numpy as np
 import pandas as pd
+import plotnine as p9
+from plotnine import ggplot, aes, geom_line, geom_point
+from plotnine.themes import theme_xkcd
+import seaborn as sns
 from shiny import render, reactive, ui
 
 import display
@@ -19,22 +25,10 @@ import convert
 import generate
 
 pace_times_vec = np.vectorize(convert.pace_times)
+parse_distance_text_vec = np.vectorize(parse.parse_distance_text)
+km_mile_distances_vec = np.vectorize(conversions.km_mile_distances)
+input_time_seconds_vec = np.vectorize(convert.input_time_seconds)
 
-REFERENCE_DISTANCES = [
-    "400m",
-    "1km",
-    "1mi",
-    "5km",
-    "8km",
-    "10km",
-    "10mi",
-    "half",
-    "marathon",
-    "50km",
-    "50mi",
-    "100km",
-    "100mi",
-]
 ```
 
 # {.sidebar}
@@ -66,7 +60,7 @@ ui.output_text_verbatim("SHY_REFERENCE_DIST")
 @reactive.Calc
 def shy_df_reference():
     data = (
-        pd.DataFrame(index=REFERENCE_DISTANCES)
+        pd.DataFrame(index=shy_set_reference_distances())
         .assign(Time=lambda df_: pace_times_vec(input.SHY_REFERENCE_TIME(), input.SHY_REFERENCE_DIST(), df_.index))
     )
     return data.T.reset_index(names='Distances')
@@ -106,7 +100,7 @@ def shy_df_range():
           by=int(input.SHY_RANGE_BY())
         )
       ),
-      columns=REFERENCE_DISTANCES
+      columns=shy_set_reference_distances()
     )
 
     data = data.apply(
@@ -137,6 +131,22 @@ def view_range_table():
 ```{python}
 REFERENCE_TIME = "6:00"
 REFERENCE_DIST = "1km"
+
+REFERENCE_DISTANCES = [
+    "400m",
+    "1km",
+    "1mi",
+    "5km",
+    "8km",
+    "10km",
+    "10mi",
+    "half",
+    "marathon",
+    "50km",
+    "50mi",
+    "100km",
+    "100mi",
+]
 ```
 
 ```{python}
@@ -194,4 +204,139 @@ df_range = df_range.apply(
 
 styled_df = df_range.style.apply(highlight_row, axis='rows')
 styled_df # <class 'pandas.io.formats.style.Styler'> object type()
+```
+
+# Pace Comparison
+
+## Row
+
+```{python}
+#| title: Race Times
+
+ui.input_text(id="race_mile", label="Mile")
+ui.input_text(id="race_5k", label="5km")
+ui.input_text(id="race_10k", label="10km")
+ui.input_text(id="race_half", label="Half Marathon")
+ui.input_text(id="race_marathon", label="Marathon")
+```
+
+
+```{python}
+@render.plot
+def pace_comparison_plot_plotnine():
+  return (
+    ggplot(
+      data=plot_df(),
+      mapping=aes(x="dist_km", y="time_sec", color='who', group='who')
+    )
+    + geom_point()
+    + geom_line()
+    # round up to nearest 100
+    + p9.ylim(0, int(math.ceil(plot_df()["time_sec"].max() / 100) * 100))
+    + theme_xkcd()
+  )
+```
+
+## Row
+
+```{python}
+@reactive.Calc
+def user_race_paces():
+  user_race_df = pd.DataFrame({
+    "user_distances": ['1mi', '5km', '10km', 'half', 'marathon'],
+    "user_times": [
+      input.race_mile(),
+      input.race_5k(),
+      input.race_10k(),
+      input.race_half(),
+      input.race_marathon()
+    ]
+  })
+  user_race_df['user_times_sec'] = input_time_seconds_vec(user_race_df['user_times'], verbose=False)
+  return user_race_df
+
+@reactive.Calc
+def pace_comparison():
+    plot_dat = shy_df_reference().melt(var_name="distance", value_name="pace_time").drop(0)
+
+    plot_dat['distance_parse'] = parse_distance_text_vec(plot_dat['distance'])
+    plot_dat['km_mile'] = km_mile_distances_vec(
+      plot_dat['distance_parse'].str.get('distance'),
+      plot_dat['distance_parse'].str.get('unit')
+    )
+    plot_dat["dist_km"] = plot_dat['km_mile'].str.get('km')
+    plot_dat["dist_mi"] = plot_dat['km_mile'].str.get('mi')
+
+    plot_dat['pace_time_sec'] = input_time_seconds_vec(plot_dat['pace_time'], verbose=False)
+
+    plot_dat = plot_dat.merge(
+      user_race_paces(),
+      how='left',
+      left_on='distance',
+      right_on='user_distances'
+    )
+
+    return plot_dat
+
+@reactive.Calc
+def plot_df():
+  df = pace_comparison()
+  df = df[["distance", "dist_km", "dist_mi", "pace_time_sec", "user_times_sec"]]
+  df = df.melt(id_vars=["distance", "dist_km", "dist_mi"], var_name="who", value_name="time_sec")
+  df = df.dropna()
+  df["time_sec"] = pd.to_numeric(df["time_sec"], errors='raise')
+  df["dist_km"] = pd.to_numeric(df["dist_km"], errors='raise')
+  df["dist_mi"] = pd.to_numeric(df["dist_mi"], errors='raise')
+  return df
+```
+
+<!-- for debugging the input tables
+```{python}
+@render.data_frame
+def show_pace_comparison():
+    return pace_comparison()
+```
+
+```{python}
+@render.data_frame
+def show_user_race_paces():
+  return user_race_paces()
+```
+
+```{python}
+@render.data_frame
+def show_plot_df():
+  return plot_df()
+```
+-->
+
+# Setup
+
+Here you can tweak some of the settings for the app.
+
+## Row {height='75%'}
+
+```{python}
+ui.input_text_area(
+  id="SHY_REFERENCE_DISTANCES",
+  label="Reference Distances\n(separate lines):",
+  value="\n".join(REFERENCE_DISTANCES),
+  height="75%",
+  width="200px"
+)
+```
+
+
+## Row {width='25%'}
+
+```{python}
+@render.text
+def shy_reference_distances():
+  values = input.SHY_REFERENCE_DISTANCES().strip().split("\n")
+  return ', '.join(values)
+
+@reactive.Calc
+def shy_set_reference_distances():
+  return input.SHY_REFERENCE_DISTANCES().strip().split("\n")
+
 ```
