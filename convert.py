@@ -18,6 +18,8 @@ def input_time_seconds(input_time, verbose):
         seconds = datetime.timedelta(
             hours=x.tm_hour, minutes=x.tm_min, seconds=x.tm_sec
         ).total_seconds()
+    elif num_colons == 0:
+        return None
     else:
         raise ValueError("input_time must be in the format HH:MM:SS or MM:SS")
 
