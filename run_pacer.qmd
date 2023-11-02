@@ -317,6 +317,49 @@ Here you can tweak some of the settings for the app.
 ## Row {height='75%'}
 
 ```{python}
+reference_dist_default = [
+    "400m",
+    "1km",
+    "1mi",
+    "5km",
+    "8km",
+    "10km",
+    "10mi",
+    "half",
+    "marathon",
+]
+
+reference_dist_ultra = [
+    "400m",
+    "1km",
+    "1mi",
+    "5km",
+    "8km",
+    "10km",
+    "10mi",
+    "half",
+    "marathon",
+    "50km",
+    "50mi",
+    "100km",
+    "100mi",
+]
+
+reference_dist_track = [
+    "200m",
+    "400m",
+    "600m",
+    "800m",
+    "1000m",
+    "1200m",
+    "1400m",
+    "1600m",
+    "1mi",
+    "2000m",
+]
+```
+
+```{python}
 ui.input_text_area(
   id="SHY_REFERENCE_DISTANCES",
   label="Reference Distances\n(separate lines):",
