@@ -17,6 +17,7 @@ from plotnine import ggplot, aes, geom_line, geom_point
 from plotnine.themes import theme_xkcd
 import seaborn as sns
 from shiny import render, reactive, ui
+from shiny.session import get_current_session # session download hack
 
 import display
 import conversions
@@ -94,7 +95,7 @@ ui.input_text(id="SHY_RANGE_BY", label="By (Seconds):", value="1", placeholder="
 ui.output_text_verbatim("SHY_REFERENCE_TIME")
 ui.output_text_verbatim("SHY_REFERENCE_DIST")
 
-#ui.download_button(id="download_df_range", label="Download Pace Table")
+ui.download_button(id="download_df_range", label="Download Pace Table")
 ```
 
 # Paces (interactive)
@@ -160,13 +161,19 @@ def view_range_table():
     #return styled_df
     return render.DataTable(shy_df_range(), height='100%')
 
-# @session.download(
-#   self,
-#         filename=lambda: f"paces.csv"
-#     )
-# async def download_df_range():
-#     await asyncio.sleep(0.25)
-#     yield shy_df_range().to_csv()
+
+session = get_current_session()
+if session is None:
+    class MockSession:
+        def download(self, filename = ""):
+            return lambda x: None
+
+    session = MockSession()
+
+@session.download(filename=lambda: f"paces.csv")
+async def download_df_range():
+    await asyncio.sleep(0.25)
+    yield shy_df_range().to_csv()
 ```
 
 # Paces (static)
