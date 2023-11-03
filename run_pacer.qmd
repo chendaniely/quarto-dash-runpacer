@@ -31,6 +31,51 @@ input_time_seconds_vec = np.vectorize(convert.input_time_seconds)
 
 ```
 
+
+```{python}
+reference_dist_default = [
+    "400m",
+    "1km",
+    "1mi",
+    "5km",
+    "8km",
+    "10km",
+    "10mi",
+    "half",
+    "marathon",
+]
+
+reference_dist_ultra = [
+    "400m",
+    "1km",
+    "1mi",
+    "5km",
+    "8km",
+    "10km",
+    "10mi",
+    "half",
+    "marathon",
+    "50km",
+    "50mi",
+    "100km",
+    "100mi",
+]
+
+reference_dist_intervals = [
+    "200m",
+    "400m",
+    "600m",
+    "800m",
+    "1000m",
+    "1200m",
+    "1400m",
+    "1600m",
+    "1mi",
+    "2000m",
+]
+```
+
+
 # {.sidebar}
 
 Reference Times and Distances for interactive tables.
@@ -112,7 +157,7 @@ def shy_df_range():
 @render.data_frame
 def view_range_table():
     #styled_df = shy_df_range().style.apply(highlight_row, reference_time = input.SHY_REFERENCE_TIME(), axis='rows')
-
+    #return styled_df
     return render.DataTable(shy_df_range(), height='100%')
 
 # @session.download(
@@ -208,7 +253,7 @@ styled_df # <class 'pandas.io.formats.style.Styler'> object type()
 
 # Pace Comparison
 
-## Row
+## column {.flow width='25%'}
 
 ```{python}
 #| title: Race Times
@@ -222,6 +267,8 @@ ui.input_text(id="race_marathon", label="Marathon")
 
 
 ```{python}
+#| height: 100%
+#| width: 75%
 @render.plot
 def pace_comparison_plot_plotnine():
   return (
@@ -233,11 +280,15 @@ def pace_comparison_plot_plotnine():
     + geom_line()
     # round up to nearest 100
     + p9.ylim(0, int(math.ceil(plot_df()["time_sec"].max() / 100) * 100))
+    + p9.xlab("Distance (km)")
+    + p9.ylab("Time (seconds)")
+    + p9.scale_color_manual(
+        name="Times",
+        values=["#000000", "#FF0000"]
+        )
     + theme_xkcd()
   )
 ```
-
-## Row
 
 ```{python}
 @reactive.Calc
@@ -287,6 +338,9 @@ def plot_df():
   df["time_sec"] = pd.to_numeric(df["time_sec"], errors='raise')
   df["dist_km"] = pd.to_numeric(df["dist_km"], errors='raise')
   df["dist_mi"] = pd.to_numeric(df["dist_mi"], errors='raise')
+
+  df["who"] = df["who"].replace({'pace_time_sec': 'Reference Pace Time', 'user_times_sec': 'User Race Time'})
+
   return df
 ```
 
@@ -312,31 +366,67 @@ def show_plot_df():
 
 # Setup
 
-Here you can tweak some of the settings for the app.
-
-## Row {height='75%'}
+## Row {height='80%'}
 
 ```{python}
+#| title: Reference Distances
+
 ui.input_text_area(
-  id="SHY_REFERENCE_DISTANCES",
+  id="reference_distances_ui",
   label="Reference Distances\n(separate lines):",
-  value="\n".join(REFERENCE_DISTANCES),
-  height="75%",
+  value="\n".join(reference_dist_default),
+  height="350px",
   width="200px"
 )
+
+ui.input_action_button(id="button_default", label="Default", width='200px')
+ui.input_action_button(id="button_ultra", label="Plus Ultra!", width='200px')
+ui.input_action_button(id="button_intervals", label="Track Intervals", width='200px')
 ```
 
+```{python}
+@reactive.Calc
+def shy_set_reference_distances():
+  return input.reference_distances_ui().strip().split("\n")
+```
 
-## Row {width='25%'}
+```{python}
+@reactive.Effect
+@reactive.event(lambda: input.button_default())
+def _():
+    ui.update_text_area(
+      id="reference_distances_ui",
+      value="\n".join(reference_dist_default)
+    )
+
+@reactive.Effect
+@reactive.event(lambda: input.button_ultra())
+def _():
+    ui.update_text_area(
+      id="reference_distances_ui",
+      value="\n".join(reference_dist_ultra)
+    )
+
+@reactive.Effect
+@reactive.event(lambda: input.button_intervals())
+def _():
+    ui.update_text_area(
+      id="reference_distances_ui",
+      value="\n".join(reference_dist_intervals)
+    )
+```
+
+```{python}
+@render.data_frame
+def _():
+  return plot_df()
+```
+
+## Row
 
 ```{python}
 @render.text
 def shy_reference_distances():
-  values = input.SHY_REFERENCE_DISTANCES().strip().split("\n")
+  values = input.reference_distances_ui().strip().split("\n")
   return ', '.join(values)
-
-@reactive.Calc
-def shy_set_reference_distances():
-  return input.SHY_REFERENCE_DISTANCES().strip().split("\n")
-
 ```
