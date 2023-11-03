@@ -35,9 +35,9 @@ install:
 
 	pip install --upgrade pip wheel
 	pip uninstall -y shiny htmltools
-	pip install -y shiny==0.6.0 htmltools==0.4.1
+	pip install shiny==0.6.0 htmltools==0.4.1
 
-	pip install -y jupyter pandas pytest seaborn plotnine
+	pip install jupyter pandas pytest seaborn plotnine
 
-	pip install -y shinylive
-	pip install -y rsconnect-python
+	pip install shinylive
+	pip install rsconnect-python
